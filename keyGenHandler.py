@@ -24,7 +24,7 @@ class keyGenHandler(Resource):
             if(args['username'] == row[1] and args['password'] == row[2]):#username and password is correct
                 found = True
                 key = sha512(random.random()).hexdigest()
-                update = "UPDATE Key set keyValue = "+str(key)+" create_at = "+str(time.time())+" where storeID="+row[0]
+                update = "UPDATE Key set keyValue = "+str(key)+" create_at = "+str(time.time())+" where storeID="+str(row[0])
                 cur.execute(update)
                 status = 'success'
                 message = str(key)
