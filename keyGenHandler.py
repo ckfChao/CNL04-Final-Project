@@ -5,9 +5,9 @@ import psycopg2
 import time
 
 class keyGenHandler(Resource):
-    def __init__(self, session, conn):
+    def __init__(self, session, db_conn):
         self.session = session
-        self.conn = conn
+        self.conn = db_conn
 
     def post(self):
         parser = reqparse.RequestParser()
@@ -15,8 +15,8 @@ class keyGenHandler(Resource):
         parser.add_argument('password', type = str)
         args = parser.parse_args()
 
-        conn = psycopg2.connect('postgres://dmrakrvfzancyh:a49bc74ae56e0cc09276c48bbf575320e4d2ef803e7cf2c9923d61c9d7409dbb@ec2-44-194-117-205.compute-1.amazonaws.com:5432/dbmji6v13v7oqt')
-        cur = conn.cursor()
+        #conn = psycopg2.connect('postgres://dmrakrvfzancyh:a49bc74ae56e0cc09276c48bbf575320e4d2ef803e7cf2c9923d61c9d7409dbb@ec2-44-194-117-205.compute-1.amazonaws.com:5432/dbmji6v13v7oqt')
+        cur = self.conn.cursor()
         cur.execute("SELECT id, username, password from store")
         rows = cur.fetchall()
         found = False
