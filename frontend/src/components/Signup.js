@@ -92,6 +92,7 @@ function Signup() {
             .signUp({ username, password, character })
             .then((res) => {
                setTextInput({username: "", password: "", confirmPassword: "", character: ""});
+               setReadOnly(false);
                setSuccMsg(true);
             })
             .catch((err) => {
@@ -183,8 +184,8 @@ function Signup() {
                   onChange={handleTextInputChange}
                   >
                   <option value="" disabled selected>Choose your character</option>
-                  <option value="store">Store</option>
-                  <option value="costumer">costumer</option>
+                  <option value="store">store</option>
+                  <option value="customer">customer</option>
                </select>
             </div>
 

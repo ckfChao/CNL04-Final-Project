@@ -13,7 +13,7 @@ class signupHandler(Resource):
         parser.add_argument('password', required=True, help='password is required', type=str)
         parser.add_argument('character', required=True, help='identity is required', type=str)
         args = parser.parse_args()
-        
+
         req_username = args['username']
         req_password = args['password']
         req_character = args['character']
@@ -26,12 +26,12 @@ class signupHandler(Resource):
         find = cur.fetchall()
         cur.close()
 
-        if not find:
+        if len(find) == 0:
+            print("OK")
             cur = self.db_conn.cursor()
             cur.execute(f"INSERT INTO {req_character} (username, password, created_on) VALUES ('{req_username}', '{req_password}', '{datetime.now()}');")
             self.db_conn.commit()
             cur.close()
-            res = Response(200)
-            return res
+            return Response(status=200)
         else:
             return { "message": { "username" : "The username have been used."}}, 400
