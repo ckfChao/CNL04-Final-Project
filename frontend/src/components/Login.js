@@ -29,7 +29,7 @@ function Login() {
          .login({ username, password, character })
          .then((res) => {
             // do some redirect
-            
+            window.location.replace("/");
          })
          .catch((err) => {
             setReadOnly(false);
@@ -91,8 +91,8 @@ function Login() {
                   onChange={handleTextInputChange}
                   >
                   <option value="" disabled selected>Choose your character</option>
-                  <option value="store">Store</option>
-                  <option value="costumer">costumer</option>
+                  <option value="store">store</option>
+                  <option value="customer">customer</option>
                </select>
             </div>
 

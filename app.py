@@ -1,3 +1,4 @@
+from tabnanny import check
 import flask
 import os
 from flask import Flask, session, send_from_directory
@@ -11,6 +12,7 @@ from api.keyGenHandler import keyGenHandler
 from api.loginHandler import loginHandler
 from api.signupHandler import signupHandler
 from api.logoutHandler import logoutHandler
+from api.checkSessionHandler import checkSessionHandler
 
 load_dotenv()
 
@@ -31,6 +33,7 @@ api.add_resource(keyGenHandler, '/api/keyGen', resource_class_kwargs={'session':
 api.add_resource(loginHandler, '/api/login', resource_class_kwargs={'session': session, 'db_conn': db_conn})
 api.add_resource(signupHandler, '/api/signup', resource_class_kwargs={'session': session, 'db_conn': db_conn})
 api.add_resource(logoutHandler, '/api/logout', resource_class_kwargs={'session': session, 'db_conn': db_conn})
+api.add_resource(checkSessionHandler, '/api/session', resource_class_kwargs={'session': session, 'db_conn': db_conn})
 
 if __name__ == '__main__':
     app.run()
