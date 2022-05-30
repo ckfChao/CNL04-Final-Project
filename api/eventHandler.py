@@ -1,143 +1,109 @@
 from flask import Response
 from flask_restful import Resource, reqparse
+from datetime import datetime
 
 class eventHandler(Resource):
     def __init__(self, session, db_conn):
         self.session = session
         self.db_conn = db_conn
+    
+    def _checkValidStoreSession(self):
+        if 'user_id' in self.session and self.session['character'] == 'store':
+            return True
+        else:
+            return False
+    
+    def _checkValidCustomerSession(self):
+        if 'user_id' in self.session and self.session['character'] == 'customer':
+            return True
+        else:
+            return False
 
-    #? Currently, return status code only
-    def post(self):
-        #! parse input from parser -> args[]
-        parser = reqparse.RequestParser()
-        parser.add_argument('username', required=True, help='username is required', type = str)
-        args = parser.parse_args()
-
-        #! check cookie
-        if 'user_id' not in self.session or 'character' not in self.session:
-            res = Response(status=400)
-            return res
-
-        #! check req type
-        if 'req_type' not in args or args['req_type'] not in range(1,5):
-            res = Response(status=400)
-            return res
-
-        #! 1) Post request
-        if args['req_type'] == 1:
-            #! Check character
-            if self.session['character'] != 'store':
-                res = Response(status=400)
-                return res
-
-            #! Check input
-            #? Didn't check if each value is valid in checklist
-            checklist = ['event_n', 'event_o', 'reward', 'invite_s', 'invite_e', 'event_s', 'event_e']
-            sql_param = []
-            for check in checklist:
-                if check not in args:
-                    res = Response(status=400)
-                    return res
-                else:
-                    sql_param.append(args[check]) 
-            sql_param.append(self.session['user_id'])  
-
-            '''
-            CREATE TABLE event (
-                id serial    PRIMARY KEY,
-                event_name   VARCHAR ( 50 ) UNIQUE NOT NULL,
-                event_owner  VARCHAR ( 50 ) NOT NULL,
-                reward       VARCHAR ( 50 ) NOT NULL,
-                invite_start TIMESTAMP NOT NULL,
-                invite_end   TIMESTAMP NOT NULL,
-                event_start  TIMESTAMP NOT NULL,
-                event_end    TIMESTAMP NOT NULL
-            );
-            CREATE TABLE event ( id serial    PRIMARY KEY, event_name   VARCHAR ( 50 ) UNIQUE NOT NULL, event_owner  VARCHAR ( 50 ) NOT NULL, reward       VARCHAR ( 50 ) NOT NULL, invite_start TIMESTAMP NOT NULL, invite_end   TIMESTAMP NOT NULL, event_start  TIMESTAMP NOT NULL, event_end    TIMESTAMP NOT NULL);
-            '''
-
-            #! Insert event            
-            #? reward & event_owner should be str /or int?
-            #? how to get time input from arg[]?
-            #? check query's return code?
-            ''' (example)
-            INSERT INTO event (event_name, reward, invite_start, invite_end, event_start, event_end, event_owner) 
-            VALUES ('event1', '20%', '1212-12-12  12:12:12', '1212-12-12  12:12:12', '1212-12-12  12:12:12', '1212-12-12  12:12:12', '99');
-            INSERT INTO event (event_name, reward, invite_start, invite_end, event_start, event_end, event_owner) VALUES ('event1', '20%', '1212-12-12  12:12:12', '1212-12-12  12:12:12', '1212-12-12  12:12:12', '1212-12-12  12:12:12', '99');
-            '''
+    def get(self, id):
+        if self._checkValidStoreSession():
+            cols = ['id', 'event_name', 'event_owner', 'reward', 'invite_start', 'invite_end', 'event_start', 'event_end']
             cur = self.db_conn.cursor()
-            cur.execute("INSERT INTO event (event_name, reward, invite_start, invite_fin, event_start, event_fin, event_owner) VALUES (%s, %s, %s, %s, %s, %s, %s);" \
-                        , sql_param)
-            self.db_conn.commit()
+            cur.execute(f"SELECT {', '.join(cols)} FROM event WHERE id={id}")
+            row = cur.fetchall()
             cur.close()
 
-            res = Response(status=200)
-            return res
+            if len(row) == 1 and row[0][2] == self.session['user_id']:
+                cur = self.db_conn.cursor()
+                cur.execute(f"SELECT username FROM store WHERE id={self.session['user_id']};")
+                username_row = cur.fetchall()
 
-        #! 2) Modify request
-        elif args['req_type'] == 2:
-            #! Check character
-            if self.session['character'] != 'store':
-                res = Response(status=400)
-                return res
+                if len(username_row) != 1:
+                    return {"message": {"error":"invalid event"}}, 400
 
-            #! check if this event exist & if this is the event owner
-            if 'id' not in args:
-                res = Response(status=400)
-                return res
-            cur = self.db_conn.cursor()
-            cur.execute(f"SELECT event_name, reward, invite_start, invite_end, event_start, event_end, event_owner FROM event WHERE id={args[id]}")
-            rows = cur.fetchall()
-            cur.close()
-
-            if len(rows) == 0 or rows[0][-1] != self.session['user_id']:
-                res = Response(status=400)
-                return res
+                row_data = { cols[i] : str(row[0][i]) for i in range(len(cols))}
+                row_data['username'] = username_row[0][0]
+                return row_data
             else:
-                modify_var = ['event_n', 'reward', 'invite_s', 'invite_e', 'event_s', 'event_e', 'event_o']
-                sql_params = []
-                for idx, var in enumerate(modify_var):
-                    if var not in args:
-                        sql_param.append(rows[0][idx])
-                    else:
-                        sql_param.append(args[var])
+                return {"message": {"error":"invalid id"}}, 400
+        else:
+            return {"message": {"error":"invalid character"}}, 400
+
+    def patch(self, id):
+        if self._checkValidStoreSession():
+            cols = ['id', 'event_name', 'event_owner', 'reward', 'invite_start', 'invite_end', 'event_start', 'event_end']
+            cur = self.db_conn.cursor()
+            cur.execute(f"SELECT {', '.join(cols)} FROM event WHERE id={id}")
+            row = cur.fetchall()
+            cur.close()
+
+            db_invite_start = row[0][4]
+            db_invite_end = row[0][5]
+            db_event_start = row[0][6]
+            db_event_end = row[0][7]
+
+            if len(row) == 1 and row[0][2] == self.session['user_id']:
+                parser = reqparse.RequestParser()
+                parser.add_argument("event_name", required=False,  type = str)
+                parser.add_argument("reward", required=False, type = str)
+                parser.add_argument("invite_start", required=False, type=lambda x: datetime.strptime(x,'%Y-%m-%dT%H:%M:%S'))
+                parser.add_argument("invite_end", required=False, type=lambda x: datetime.strptime(x,'%Y-%m-%dT%H:%M:%S'))
+                parser.add_argument("event_start", required=False, type=lambda x: datetime.strptime(x,'%Y-%m-%dT%H:%M:%S'))
+                parser.add_argument("event_end", required=False, type=lambda x: datetime.strptime(x,'%Y-%m-%dT%H:%M:%S'))
+                args = parser.parse_args()
+
+                new_invite_start = args['invite_start'] if args['invite_start'] != None else db_invite_start
+                new_invite_end = args['invite_end'] if args['invite_end'] != None else db_invite_end
+                new_event_start = args['event_start'] if args['event_start'] != None else db_event_start
+                new_event_end = args['event_end'] if args['event_end'] != None else db_event_end
+
+                if not (new_event_end > new_event_start > new_invite_end > new_invite_start):
+                    return {"message": {"error":"invalid datetime"}}, 400
+
+                cur = self.db_conn.cursor()
+                for key in args.keys():
+                    if args[key] != None:
+                        cur.execute(f"UPDATE event SET {key}='{args[key]}' WHERE id={id}")
+                        self.db_conn.commit()
                 
-                cur = self.db_conn.cursor()
-                cur.execute(f"UPDATE event SET event_name={sql_param[0]}, reward={sql_param[1]}, invite_start={sql_param[2]}, invite_end={sql_param[3]}, event_start={sql_param[4]}, event_end={sql_param[5]}, event_owner={sql_param[6]} WHERE id={args[id]}")
-                self.db_conn.commit()
                 cur.close()
-            
                 res = Response(status=200)
-                return res
-        #! 3) Delete request
-        elif args['req_type'] == 3:
-            #! Check character
-            if self.session['character'] != 'store':
-                res = Response(status=400)
-                return res
-
-            #! check if this event exist & if this is the event owner
-            if 'id' not in args:
-                res = Response(status=400)
-                return res
-            cur = self.db_conn.cursor()
-            cur.execute(f"SELECT event_owner FROM event WHERE id={args[id]}")
-            rows = cur.fetchall()
-            cur.close()
-
-            if len(rows) == 0 or rows[0][0] != self.session['user_id']:
-                res = Response(status=400)
                 return res
             else:
+                return {"message": {"error":"invalid id"}}, 400
+        else:
+            return {"message": {"error":"invalid character"}}, 400
+
+    def delete(self, id):
+        if self._checkValidStoreSession():
+            cols = ['id', 'event_name', 'event_owner', 'reward', 'invite_start', 'invite_end', 'event_start', 'event_end']
+            cur = self.db_conn.cursor()
+            cur.execute(f"SELECT {', '.join(cols)} FROM event WHERE id={id}")
+            row = cur.fetchall()
+            cur.close()
+            
+            if len(row) == 1 and row[0][2] == self.session['user_id']:
                 cur = self.db_conn.cursor()
-                cur.execute(f"DELETE from event WHERE id={args[id]}")
+                cur.execute(f'DELETE FROM event WHERE id={id};')
                 self.db_conn.commit()
                 cur.close()
-            
-                res = Response(status=200)
-                return res
-        #! 4) Get request
-        elif args['req_type'] == 3:
-            #? Write your code here
-            res = Response(status=200)
-            return res
+
+                return Response(status=200)
+            else:
+                return {"message": {"error":"invalid id"}}, 400
+        else:
+            return {"message": {"error":"invalid character"}}, 400

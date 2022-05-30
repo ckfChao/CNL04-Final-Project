@@ -9,45 +9,56 @@ class infoHandler(Resource):
     
     def get(self):
         if 'user_id' in self.session:
-            cur = self.db_conn.cursor()
-            cur.execute(f"SELECT store_name, intro, address from store WHERE id='{self.session['user_id']}'")
-            row = cur.fetchall()
-            cur.close()
+            user_id = self.session['user_id']
+            tablename = self.session['character']
 
-            if len(row) == 1:
-                return {"message": {"store name":row[0][0], "intro":row[0][1], "address":row[0][2]}}
+            if tablename == "store":
+                cur = self.db_conn.cursor()
+                cur.execute(f"SELECT username, store_name, intro, address from store WHERE id={user_id}")
+                rows = cur.fetchall()
+                cur.close()
+
+                if len(rows) >= 1:
+                    return {"username": rows[0][0], "store name": rows[0][1], "intro": rows[0][2], "address": rows[0][3]}
+                else:
+                    return {"message": {"error":"Information not found"}}, 400
+            elif tablename == "customer":
+                cur = self.db_conn.cursor()
+                cur.execute(f"SELECT username from customer WHERE id={user_id}")
+                rows = cur.fetchall()
+                cur.close()
+
+                if len(rows) >= 1:
+                    return { "username": rows[0][0] }
+                else:
+                    return {"message": {"error":"Information not found"}}, 400
             else:
-                return ("message": {"error":"Information not found"}), 400
+                return {"message": {"error":"Information not found"}}, 400
         else:
             return {"message": {"error":"Cookie not found"}}, 400
     
-    def post(self):
+    def patch(self):
         parser = reqparse.RequestParser()
-        parser.add_argument("new store name", required=False,  type = str)
-        parser.add_argument("new intro", required=False, type = str)
-        parser.add_argument("new address", required=False, type = str)
+        parser.add_argument("store_name", required=False,  type = str)
+        parser.add_argument("intro", required=False, type = str)
+        parser.add_argument("address", required=False, type = str)
         args = parser.parse_args()
 
         if len(args) == 0:
-            return ("message": {"error":"No new information"}), 400
+            return {"message": {"error":"No new information"}}, 400
 
-        if 'user_id' in self.session:
+        if 'user_id' in self.session and self.session['character'] == 'store':
+
             store_id = self.session['user_id']
             cur = self.db_conn.cursor()
-            if "new store name" in args:
-                cur.execute(f"UPDATE store SET store_name='{args["new store name"]}' WHERE id={store_id}")
-                self.db_conn.commit()
-            
-            if "new intro" in args:
-                cur.execute(f"UPDATE store SET intro='{args["new intro"]}' WHERE id={store_id}")
-                self.db_conn.commit()
-            
-            if "new address" in args:
-                cur.execute(f"UPDATE store SET address='{args["new address"]}' WHERE id={store_id}")
-                self.db_conn.commit()
+
+            for key in args.keys():
+                if args[key] != None:
+                    cur.execute(f"UPDATE store SET {key}='{args[key]}' WHERE id={store_id}")
+                    self.db_conn.commit()
             
             cur.close()
-            res = Response(200)
+            res = Response(status=200)
             return res
         else:
             return {"message": {"error":"Cookie not found"}}, 400

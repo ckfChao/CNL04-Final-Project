@@ -13,6 +13,11 @@ from api.loginHandler import loginHandler
 from api.signupHandler import signupHandler
 from api.logoutHandler import logoutHandler
 from api.checkSessionHandler import checkSessionHandler
+from api.infoHandler import infoHandler
+from api.eventHandler import eventHandler
+from api.eventListHandler import eventListHandler
+from api.eventListSelfHandler import eventListSelfHandler
+
 
 load_dotenv()
 
@@ -34,6 +39,10 @@ api.add_resource(loginHandler, '/api/login', resource_class_kwargs={'session': s
 api.add_resource(signupHandler, '/api/signup', resource_class_kwargs={'session': session, 'db_conn': db_conn})
 api.add_resource(logoutHandler, '/api/logout', resource_class_kwargs={'session': session, 'db_conn': db_conn})
 api.add_resource(checkSessionHandler, '/api/session', resource_class_kwargs={'session': session, 'db_conn': db_conn})
+api.add_resource(infoHandler, '/api/info', resource_class_kwargs={'session': session, 'db_conn': db_conn})
+api.add_resource(eventListHandler, '/api/events',  endpoint = 'events', resource_class_kwargs={'session': session, 'db_conn': db_conn})
+api.add_resource(eventListSelfHandler, '/api/events/self', resource_class_kwargs={'session': session, 'db_conn': db_conn})
+api.add_resource(eventHandler, '/api/events/<int:id>',  endpoint = 'event', resource_class_kwargs={'session': session, 'db_conn': db_conn})
 
 if __name__ == '__main__':
     app.run()
