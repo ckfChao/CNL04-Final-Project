@@ -1,6 +1,7 @@
 from flask_restful import Api, Resource, reqparse
 from flask import Response
 import psycopg2
+from flask import request
 
 class infoHandler(Resource):
     def __init__(self, session, db_conn):

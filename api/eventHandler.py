@@ -20,28 +20,44 @@ class eventHandler(Resource):
             return False
 
     def get(self, id):
-        if self._checkValidStoreSession():
-            cols = ['id', 'event_name', 'event_owner', 'reward', 'invite_start', 'invite_end', 'event_start', 'event_end']
+        cols = ['id', 'event_name', 'event_owner', 'reward', 'invite_start', 'invite_end', 'event_start', 'event_end']
+        cur = self.db_conn.cursor()
+        cur.execute(f"SELECT {', '.join(cols)} FROM event WHERE id={id}")
+        row = cur.fetchall()
+        cur.close()
+
+        if len(row) == 1:
             cur = self.db_conn.cursor()
-            cur.execute(f"SELECT {', '.join(cols)} FROM event WHERE id={id}")
-            row = cur.fetchall()
+            cur.execute(f"SELECT username FROM store WHERE id={row[0][2]};")
+            username_row = cur.fetchall()
             cur.close()
 
-            if len(row) == 1 and row[0][2] == self.session['user_id']:
-                cur = self.db_conn.cursor()
-                cur.execute(f"SELECT username FROM store WHERE id={self.session['user_id']};")
-                username_row = cur.fetchall()
+            if len(username_row) != 1:
+                return {"message": {"error":"invalid event"}}, 400
+            
+            cur = self.db_conn.cursor()
+            cur.execute(f"SELECT username FROM store WHERE id IN (SELECT partner_id FROM event_partner WHERE event_id='{id}');")
+            partner_username_rows = cur.fetchall()
+            cur.close()
 
-                if len(username_row) != 1:
-                    return {"message": {"error":"invalid event"}}, 400
+            cur = self.db_conn.cursor()
+            cur.execute(f"SELECT COUNT(*) FROM event_participant WHERE event_id='{id}';")
+            count_partic_row = cur.fetchall()
+            cur.close()
 
-                row_data = { cols[i] : str(row[0][i]) for i in range(len(cols))}
-                row_data['username'] = username_row[0][0]
-                return row_data
-            else:
-                return {"message": {"error":"invalid id"}}, 400
+            cur = self.db_conn.cursor()
+            cur.execute(f"SELECT COUNT(*) FROM event_participant WHERE event_id='{id}' AND is_finish=1;")
+            finish_count_partic_row = cur.fetchall()
+            cur.close()
+
+            row_data = { cols[i] : str(row[0][i]) for i in range(len(cols))}
+            row_data['username'] = username_row[0][0]
+            row_data['partners'] = [ partner_username_row[0] for partner_username_row in partner_username_rows]
+            row_data['count_partic'] = count_partic_row[0][0]
+            row_data['finish_count_partic'] = finish_count_partic_row[0][0]
+            return row_data
         else:
-            return {"message": {"error":"invalid character"}}, 400
+            return {"message": {"error":"invalid id"}}, 400
 
     def patch(self, id):
         if self._checkValidStoreSession():
